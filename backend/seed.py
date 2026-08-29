@@ -24,12 +24,18 @@ def seed_database():
 
     db = SessionLocal()
 
-    print("Generating synthetic merchant dataset (200 merchants x 45 days)...")
-    df_merchants, df_signals = generate_synthetic_dataset(200, 45)
+    is_serverless = bool(os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"))
+    n_merchants = 50 if is_serverless else 200
+    n_days = 20 if is_serverless else 45
+
+    print(f"Generating synthetic merchant dataset ({n_merchants} merchants x {n_days} days)...")
+    df_merchants, df_signals = generate_synthetic_dataset(n_merchants, n_days)
 
     print("Training XGBoost, Isolation Forest & SHAP TreeExplainer...")
-    train_and_save_ml_models(df_merchants, df_signals)
-    inference_engine.load_or_initialize()
+    trained_model, trained_iso, trained_explainer, trained_features = train_and_save_ml_models(df_merchants, df_signals)
+    inference_engine.model = trained_model
+    inference_engine.iso_forest = trained_iso
+    inference_engine.explainer = trained_explainer
 
     print("Seeding Credit Officer Accounts...")
     users = [

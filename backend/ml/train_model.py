@@ -330,8 +330,8 @@ def train_and_save_ml_models(df_merchants, df_signals):
 
     print(f"Training Pure NumPy GradientBoostedTreeRegressor on {len(X_df)} samples...")
     model = GradientBoostedTreeRegressor(
-        n_estimators=45,
-        max_depth=4,
+        n_estimators=15,
+        max_depth=3,
         learning_rate=0.1,
         random_state=42
     )
@@ -339,7 +339,7 @@ def train_and_save_ml_models(df_merchants, df_signals):
 
     print("Training Pure NumPy IsolationForestDetector Anomaly Detector...")
     iso_forest = IsolationForestDetector(
-        n_estimators=50,
+        n_estimators=15,
         contamination=0.12,
         random_state=42
     )
