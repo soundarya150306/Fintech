@@ -4,8 +4,6 @@ import joblib
 import numpy as np
 import pandas as pd
 import xgboost as xgb
-from sklearn.ensemble import IsolationForest
-
 class NativeTreeExplainer:
     """Computes exact Tree SHAP attributions natively via XGBoost C++ engine."""
     def __init__(self, model):
@@ -17,6 +15,72 @@ class NativeTreeExplainer:
         contribs = booster.predict(dmatrix, pred_contribs=True)
         # contribs shape: (N, num_features + 1), last column is base margin / bias
         return contribs[:, :-1]
+
+class IsolationForestDetector:
+    """Pure NumPy Isolation Forest Anomaly Detector — zero scipy/scikit-learn dependencies."""
+    def __init__(self, n_estimators=60, contamination=0.12, random_state=42):
+        self.n_estimators = n_estimators
+        self.contamination = contamination
+        self.random_state = random_state
+        self.threshold_ = None
+        self.trees_ = []
+
+    def fit(self, X):
+        X_arr = np.asarray(X, dtype=float)
+        rng = np.random.RandomState(self.random_state)
+        n_samples, _ = X_arr.shape
+        max_depth = int(np.ceil(np.log2(max(n_samples, 2))))
+        
+        self.trees_ = []
+        sample_size = min(n_samples, 128)
+        for _ in range(self.n_estimators):
+            sub_idx = rng.choice(n_samples, size=sample_size, replace=False)
+            tree = self._build_tree(X_arr[sub_idx], 0, max_depth, rng)
+            self.trees_.append(tree)
+
+        scores = self.score_samples(X_arr)
+        self.threshold_ = float(np.percentile(scores, 100 * self.contamination))
+        return self
+
+    def _build_tree(self, X, depth, max_depth, rng):
+        n_samples, n_features = X.shape
+        if depth >= max_depth or n_samples <= 1:
+            return {"type": "leaf", "size": n_samples}
+        feat = rng.randint(0, n_features)
+        min_v, max_v = float(np.min(X[:, feat])), float(np.max(X[:, feat]))
+        if min_v >= max_v:
+            return {"type": "leaf", "size": n_samples}
+        split_val = float(rng.uniform(min_v, max_v))
+        left_m = X[:, feat] < split_val
+        return {
+            "type": "split", "feat": feat, "val": split_val,
+            "left": self._build_tree(X[left_m], depth + 1, max_depth, rng),
+            "right": self._build_tree(X[~left_m], depth + 1, max_depth, rng)
+        }
+
+    def _path_len(self, x, node, depth):
+        if node["type"] == "leaf":
+            n = node["size"]
+            c = 2.0 * (np.log(max(n - 1, 1)) + 0.5772156649) - (2.0 * (n - 1) / max(n, 1)) if n > 1 else 0
+            return depth + c
+        if x[node["feat"]] < node["val"]:
+            return self._path_len(x, node["left"], depth + 1)
+        return self._path_len(x, node["right"], depth + 1)
+
+    def score_samples(self, X):
+        X_arr = np.asarray(X, dtype=float)
+        c = 2.0 * (np.log(max(128 - 1, 1)) + 0.5772156649) - (2.0 * (128 - 1) / 128)
+        scores = []
+        for row in X_arr:
+            avg_len = np.mean([self._path_len(row, t, 0) for t in self.trees_])
+            s = 2.0 ** (-avg_len / max(c, 1e-6))
+            scores.append(-float(s))
+        return np.array(scores)
+
+    def predict(self, X):
+        scores = self.score_samples(X)
+        thresh = self.threshold_ if self.threshold_ is not None else -0.60
+        return np.where(scores < thresh, -1, 1)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ARTIFACTS_DIR = os.path.join(BASE_DIR, "artifacts")
@@ -144,7 +208,7 @@ def train_and_save_ml_models(df_merchants, df_signals):
     model.fit(X_df, y)
 
     print("Training Isolation Forest Anomaly Detector...")
-    iso_forest = IsolationForest(
+    iso_forest = IsolationForestDetector(
         n_estimators=60,
         contamination=0.12,
         random_state=42

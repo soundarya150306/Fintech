@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import xgboost as xgb
 
-from ml.train_model import FEATURE_COLUMNS, extract_features_from_signals, NativeTreeExplainer
+from ml.train_model import FEATURE_COLUMNS, extract_features_from_signals, NativeTreeExplainer, IsolationForestDetector
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ARTIFACTS_DIR = os.path.join(BASE_DIR, "artifacts")
