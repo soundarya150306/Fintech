@@ -3,7 +3,6 @@ import sys
 import traceback
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-from mangum import Mangum
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 if current_dir not in sys.path:
@@ -28,5 +27,3 @@ except Exception as e:
                 "dir_contents": os.listdir(current_dir) if os.path.exists(current_dir) else []
             }
         )
-
-handler = Mangum(app, lifespan="off")
