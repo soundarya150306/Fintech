@@ -1,19 +1,23 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
-  Radar, 
-  LayoutDashboard, 
+  Bell, 
   Search, 
-  AlertTriangle, 
-  Sliders, 
-  Bot, 
-  FileText, 
   Play, 
   Pause, 
   UserCheck, 
-  LogOut 
+  LogOut, 
+  ShieldCheck, 
+  Sparkles, 
+  Store, 
+  LayoutDashboard,
+  Calendar,
+  Layers
 } from 'lucide-react';
+import { NotificationsDrawer } from './NotificationsDrawer';
 
 interface NavbarProps {
+  portalMode: 'admin' | 'merchant';
+  setPortalMode: (mode: 'admin' | 'merchant') => void;
   activeTab: string;
   setActiveTab: (tab: string) => void;
   onAdvanceDay: () => void;
@@ -23,9 +27,17 @@ interface NavbarProps {
   user: any;
   onOpenAuth: () => void;
   onLogout: () => void;
+  alerts: any[];
+  onSelectMerchantById: (mId: string) => void;
+  selectedMerchant: any;
+  searchTerm: string;
+  setSearchTerm: (term: string) => void;
+  isCollapsed: boolean;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
+  portalMode,
+  setPortalMode,
   activeTab,
   setActiveTab,
   onAdvanceDay,
@@ -34,117 +46,189 @@ export const Navbar: React.FC<NavbarProps> = ({
   simulatedDayCount,
   user,
   onOpenAuth,
-  onLogout
+  onLogout,
+  alerts,
+  onSelectMerchantById,
+  selectedMerchant,
+  searchTerm,
+  setSearchTerm,
+  isCollapsed
 }) => {
-  const navItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'merchant360', label: 'Merchant 360°', icon: Search },
-    { id: 'earlywarning', label: 'Early Warning', icon: AlertTriangle },
-    { id: 'simulator', label: 'What-If Simulator', icon: Sliders },
-    { id: 'copilot', label: 'AI Copilot', icon: Bot },
-    { id: 'audit', label: 'Audit & Compliance', icon: FileText }
-  ];
+  const [isAlertsOpen, setIsAlertsOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 glass-panel border-b border-slate-800 bg-[#070A10]/90">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          
-          {/* Logo & Brand */}
-          <div className="flex items-center gap-3 cursor-pointer" onClick={() => setActiveTab('dashboard')}>
-            <div className="p-2 rounded-xl bg-teal-500/10 border border-teal-500/30 text-teal-400">
-              <Radar className="w-6 h-6 animate-pulse" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-base tracking-wide text-slate-100">FinTrust AI</span>
-                <span className="text-[10px] font-mono uppercase bg-teal-500/10 text-teal-300 border border-teal-500/20 px-1.5 py-0.5 rounded">
-                  Radar
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-400 hidden sm:block">AI-Powered Merchant Risk Monitor</p>
-            </div>
+    <header className={`glass-topbar sticky top-0 z-30 h-16 transition-all duration-300 ${
+      isCollapsed ? 'pl-20' : 'pl-64'
+    }`}>
+      <div className="h-full px-4 sm:px-6 flex items-center justify-between gap-4">
+        
+        {/* Left: Breadcrumbs & Status Tag */}
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="flex items-center gap-2 text-xs font-mono text-slate-400 truncate">
+            <span className="text-slate-200 font-semibold truncate hidden sm:inline">
+              FinTrust AI — SCF Fraud &amp; Stress Detection
+            </span>
+            <span className="hidden sm:inline text-slate-600">/</span>
+            <span className="text-teal-400 capitalize font-medium truncate">
+              {portalMode === 'admin' ? activeTab.replace('tier_', 'Tier: ').replace('graph3d', '3D Network') : (selectedMerchant?.name || 'Shop Portal')}
+            </span>
           </div>
 
-          {/* Simulation Ticker Control */}
-          <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/80 border border-slate-800 text-xs font-mono">
-            <span className="text-slate-400">Simulated Day:</span>
-            <span className="text-teal-400 font-bold">{simulatedDayCount}</span>
-            
+          <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border shrink-0 hidden md:inline-flex items-center gap-1 ${
+            portalMode === 'admin' 
+              ? 'bg-teal-500/10 text-teal-300 border-teal-500/25' 
+              : 'bg-indigo-500/10 text-indigo-300 border-indigo-500/25'
+          }`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${portalMode === 'admin' ? 'bg-teal-400' : 'bg-indigo-400'}`}></span>
+            {portalMode === 'admin' ? 'Risk Analyst Mode' : 'Merchant Mode'}
+          </span>
+        </div>
+
+        {/* Center/Right: Quick Search */}
+        <div className="hidden lg:flex items-center flex-1 max-w-xs relative">
+          <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 pointer-events-none" />
+          <input
+            type="text"
+            placeholder={portalMode === 'admin' ? "Search merchants (Ctrl+K)..." : "Search store signals..."}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full bg-slate-900/90 border border-slate-800 rounded-xl pl-9 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-teal-500/50 transition-colors font-mono"
+          />
+        </div>
+
+        {/* Right Controls */}
+        <div className="flex items-center gap-3 shrink-0">
+          
+          {/* Time Simulation Ticker (Admin) */}
+          {portalMode === 'admin' && (
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-900/90 border border-slate-800 text-xs font-mono">
+              <Calendar className="w-3.5 h-3.5 text-slate-400 hidden sm:block" />
+              <span className="text-slate-400 text-[11px] hidden sm:inline">Day:</span>
+              <span className="text-teal-400 font-bold">{simulatedDayCount}</span>
+
+              <button
+                onClick={onAdvanceDay}
+                className="ml-1.5 px-2 py-0.5 rounded-lg bg-teal-500/15 hover:bg-teal-500/25 text-teal-300 border border-teal-500/30 flex items-center gap-1 text-[11px] font-medium transition-all active:scale-95"
+                title="Advance simulation by 1 day"
+              >
+                <Play className="w-2.5 h-2.5 fill-current" />
+                <span>Next Day</span>
+              </button>
+
+              <button
+                onClick={() => setIsAutoAdvancing(prev => !prev)}
+                className={`p-1 rounded-lg border transition-all ${
+                  isAutoAdvancing 
+                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' 
+                    : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-slate-200'
+                }`}
+                title={isAutoAdvancing ? 'Pause auto day ticker' : 'Start auto day ticker'}
+              >
+                {isAutoAdvancing ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
+              </button>
+            </div>
+          )}
+
+          {/* Portal Switcher Button */}
+          <button
+            onClick={() => setPortalMode(portalMode === 'admin' ? 'merchant' : 'admin')}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-mono font-medium bg-slate-900 border border-slate-800 hover:border-teal-500/40 text-slate-300 hover:text-slate-100 transition-all"
+            title="Switch between Admin / Underwriter and Merchant Shop Portal"
+          >
+            {portalMode === 'admin' ? (
+              <>
+                <Store className="w-3.5 h-3.5 text-indigo-400" />
+                <span className="hidden sm:inline">Merchant Portal</span>
+              </>
+            ) : (
+              <>
+                <LayoutDashboard className="w-3.5 h-3.5 text-teal-400" />
+                <span className="hidden sm:inline">Admin Portal</span>
+              </>
+            )}
+          </button>
+
+          {/* Notification Bell */}
+          <div className="relative">
             <button
-              onClick={onAdvanceDay}
-              className="ml-2 px-2.5 py-1 rounded-lg bg-teal-500/20 hover:bg-teal-500/30 text-teal-300 border border-teal-500/40 flex items-center gap-1 transition-all active:scale-95"
-              title="Fast-forward time by 1 day to see how risk scores change"
+              onClick={() => setIsAlertsOpen(!isAlertsOpen)}
+              className="p-2 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-slate-100 relative transition-all"
+              title="View active stress & fraud alerts"
             >
-              <Play className="w-3 h-3 fill-current" />
-              <span>Next Day</span>
+              <Bell className="w-4 h-4" />
+              {alerts.length > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 text-white font-mono text-[9px] font-bold flex items-center justify-center animate-pulse">
+                  {alerts.length}
+                </span>
+              )}
             </button>
 
-            <button
-              onClick={() => setIsAutoAdvancing((prev) => !prev)}
-              className={`p-1 rounded-lg border transition-all ${
-                isAutoAdvancing 
-                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' 
-                  : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-slate-200'
-              }`}
-              title={isAutoAdvancing ? 'Pause auto day tick' : 'Start auto day tick timer'}
-            >
-              {isAutoAdvancing ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
-            </button>
+            <NotificationsDrawer
+              isOpen={isAlertsOpen}
+              onClose={() => setIsAlertsOpen(false)}
+              alerts={alerts}
+              onSelectMerchantById={onSelectMerchantById}
+            />
           </div>
 
           {/* User Profile / Auth */}
-          <div className="flex items-center gap-3">
-            {user ? (
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2 text-xs bg-slate-900/90 border border-slate-800 px-3 py-1.5 rounded-xl">
-                  <UserCheck className="w-4 h-4 text-teal-400" />
-                  <div className="text-left">
-                    <div className="font-semibold text-slate-200">{user.username}</div>
-                    <div className="text-[10px] text-slate-400">{user.role}</div>
+          {user ? (
+            <div className="relative">
+              <button
+                onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                className="flex items-center gap-2 p-1.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-slate-700 text-xs transition-all"
+              >
+                <div className="w-7 h-7 rounded-lg bg-teal-500/10 border border-teal-500/30 flex items-center justify-center text-teal-400 font-bold">
+                  {user.username.charAt(0).toUpperCase()}
+                </div>
+                <div className="text-left hidden md:block pr-1">
+                  <div className="font-semibold text-slate-200 leading-tight">{user.username}</div>
+                  <div className="text-[10px] text-slate-400 leading-tight">{user.role}</div>
+                </div>
+              </button>
+
+              {isUserMenuOpen && (
+                <div className="absolute right-0 mt-2 w-52 glass-panel-glow rounded-xl border border-slate-700/80 shadow-2xl p-2 z-50 animate-fade-in bg-[#0F1626]/95">
+                  <div className="px-3 py-2 border-b border-slate-800">
+                    <div className="font-semibold text-xs text-slate-200">{user.username}</div>
+                    <div className="text-[10px] text-slate-400 font-mono">{user.email}</div>
+                  </div>
+                  <div className="py-1">
+                    <button
+                      onClick={() => {
+                        onOpenAuth();
+                        setIsUserMenuOpen(false);
+                      }}
+                      className="w-full text-left px-3 py-1.5 text-xs text-slate-300 hover:text-slate-100 hover:bg-slate-800/60 rounded-lg flex items-center gap-2"
+                    >
+                      <UserCheck className="w-3.5 h-3.5 text-teal-400" />
+                      <span>Switch Account</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        onLogout();
+                        setIsUserMenuOpen(false);
+                      }}
+                      className="w-full text-left px-3 py-1.5 text-xs text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 rounded-lg flex items-center gap-2"
+                    >
+                      <LogOut className="w-3.5 h-3.5" />
+                      <span>Sign Out</span>
+                    </button>
                   </div>
                 </div>
-                <button
-                  onClick={onLogout}
-                  className="p-2 rounded-xl text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 transition-all"
-                  title="Log out"
-                >
-                  <LogOut className="w-4 h-4" />
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={onOpenAuth}
-                className="px-3.5 py-1.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-black font-semibold text-xs transition-all shadow-lg shadow-teal-500/20"
-              >
-                Sign In (Demo)
-              </button>
-            )}
-          </div>
+              )}
+            </div>
+          ) : (
+            <button
+              onClick={onOpenAuth}
+              className="px-3.5 py-1.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-black font-semibold text-xs transition-all shadow-glow-teal"
+            >
+              Sign In
+            </button>
+          )}
 
         </div>
-
-        {/* Navigation Tabs Bar */}
-        <nav className="flex items-center gap-1 overflow-x-auto py-2 no-scrollbar border-t border-slate-800/60">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = activeTab === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => setActiveTab(item.id)}
-                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-all ${
-                  isActive
-                    ? 'bg-teal-500/15 text-teal-300 border border-teal-500/30 shadow-md shadow-teal-500/5'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border border-transparent'
-                }`}
-              >
-                <Icon className={`w-4 h-4 ${isActive ? 'text-teal-400' : 'text-slate-500'}`} />
-                <span>{item.label}</span>
-              </button>
-            );
-          })}
-        </nav>
 
       </div>
     </header>

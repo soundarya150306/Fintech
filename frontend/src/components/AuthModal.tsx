@@ -1,120 +1,263 @@
 import React, { useState } from 'react';
-import { X, Lock, Mail, UserCheck } from 'lucide-react';
+import { 
+  X, 
+  ShieldCheck, 
+  Store, 
+  UserCheck, 
+  Lock, 
+  Mail, 
+  ArrowRight, 
+  Sparkles, 
+  CheckCircle2 
+} from 'lucide-react';
+import { Merchant } from '../types';
 
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onLoginSuccess: (user: any) => void;
+  onLoginSuccess: (userData: any, portalMode: 'admin' | 'merchant', selectedShopMerchant?: any) => void;
+  merchants?: Merchant[];
 }
 
-export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLoginSuccess }) => {
-  const [email, setEmail] = useState('officer@fintrust.ai');
-  const [password, setPassword] = useState('officer123');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+export const AuthModal: React.FC<AuthModalProps> = ({
+  isOpen,
+  onClose,
+  onLoginSuccess,
+  merchants = []
+}) => {
+  const [portalType, setPortalType] = useState<'admin' | 'merchant'>('admin');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [selectedDemoShop, setSelectedDemoShop] = useState<string>('MERCH-0001');
 
   if (!isOpen) return null;
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
-
-    try {
-      const formData = new URLSearchParams();
-      formData.append('username', email);
-      formData.append('password', password);
-
-      const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
-      const res = await fetch(`${API_BASE}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: formData.toString()
-      });
-
-      if (!res.ok) {
-        throw new Error('Invalid email or password');
-      }
-
-      const data = await res.json();
-      localStorage.setItem('fintrust_token', data.access_token);
-      onLoginSuccess(data);
-      onClose();
-    } catch (err: any) {
-      setError(err.message || 'Login failed');
-    } finally {
-      setLoading(false);
+  const handleAdminDemoLogin = (role: 'officer' | 'admin') => {
+    if (role === 'officer') {
+      onLoginSuccess({
+        username: 'officer_sarah',
+        email: 'officer@fintrust.ai',
+        role: 'Senior Credit Officer'
+      }, 'admin');
+    } else {
+      onLoginSuccess({
+        username: 'admin',
+        email: 'admin@fintrust.ai',
+        role: 'System Administrator'
+      }, 'admin');
     }
+    onClose();
   };
 
+  const handleMerchantDemoLogin = (mId: string) => {
+    const shop = merchants.find(m => m.id === mId) || {
+      id: mId,
+      name: 'Aura Glow Beauty',
+      sector: 'Apparel & Fashion',
+      region: 'North America',
+      base_credit_limit: 150000,
+      current_risk_score: 28.5,
+      risk_band: 'Low Risk',
+      anomaly_flag: false,
+      deterioration_flag: false,
+      onboarded_date: '2026-01-15'
+    };
+
+    onLoginSuccess({
+      username: shop.name,
+      email: `owner@${shop.id.toLowerCase()}.com`,
+      role: 'Merchant Shop Owner',
+      merchantId: shop.id
+    }, 'merchant', shop);
+    onClose();
+  };
+
+  const handleCustomSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (portalType === 'admin') {
+      onLoginSuccess({
+        username: email.split('@')[0] || 'credit_officer',
+        email: email || 'officer@fintrust.ai',
+        role: 'Credit Underwriter'
+      }, 'admin');
+    } else {
+      const shop = merchants.find(m => m.id === selectedDemoShop) || merchants[0] || {
+        id: 'MERCH-0001',
+        name: 'Aura Glow Beauty'
+      };
+      onLoginSuccess({
+        username: shop.name || 'Merchant Owner',
+        email: email || 'owner@merchant.com',
+        role: 'Merchant Shop Owner',
+        merchantId: shop.id
+      }, 'merchant', shop);
+    }
+    onClose();
+  };
+
+  const demoShops = merchants.slice(0, 4);
+
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="glass-panel p-6 rounded-2xl border border-slate-800 max-w-sm w-full relative space-y-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
+      <div className="relative w-full max-w-lg glass-panel-glow rounded-3xl border border-slate-700/80 shadow-2xl p-6 sm:p-8 bg-[#0C1220]/95 overflow-hidden">
         
+        {/* Glow ambient circle */}
+        <div className="absolute -top-24 -right-24 w-64 h-64 bg-teal-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+        {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-slate-500 hover:text-slate-200"
+          className="absolute top-6 right-6 p-1.5 text-slate-400 hover:text-slate-100 hover:bg-slate-800 rounded-xl transition-colors"
         >
           <X className="w-5 h-5" />
         </button>
 
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-teal-500/10 text-teal-400 border border-teal-500/30">
-            <UserCheck className="w-6 h-6" />
+        {/* Header */}
+        <div className="text-center mb-6">
+          <div className="inline-flex p-3 rounded-2xl bg-teal-500/10 border border-teal-500/30 text-teal-400 mb-3 shadow-glow-teal">
+            {portalType === 'admin' ? <ShieldCheck className="w-6 h-6" /> : <Store className="w-6 h-6 text-indigo-400" />}
           </div>
-          <div>
-            <h2 className="text-base font-bold text-slate-100">Credit Officer Sign In</h2>
-            <p className="text-xs text-slate-400 font-mono">Demo Auth • Role Based Access</p>
-          </div>
+          <h2 className="text-xl font-bold text-slate-100">
+            Sign In to FinTrust AI
+          </h2>
+          <p className="text-xs text-slate-400 mt-1 font-mono">
+            Select your portal to access credit risk radar or shop analytics
+          </p>
         </div>
 
-        {error && (
-          <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs font-mono">
-            {error}
-          </div>
-        )}
+        {/* Portal Selector Tabs */}
+        <div className="grid grid-cols-2 gap-2 p-1 rounded-2xl bg-slate-900/90 border border-slate-800 mb-6">
+          <button
+            type="button"
+            onClick={() => setPortalType('admin')}
+            className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-semibold transition-all ${
+              portalType === 'admin'
+                ? 'bg-teal-500/20 text-teal-300 border border-teal-500/40 shadow-sm'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <ShieldCheck className="w-4 h-4 text-teal-400" />
+            <span>Admin / Credit Officer</span>
+          </button>
 
-        <form onSubmit={handleSubmit} className="space-y-4 text-xs font-mono">
+          <button
+            type="button"
+            onClick={() => setPortalType('merchant')}
+            className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-semibold transition-all ${
+              portalType === 'merchant'
+                ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 shadow-sm'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Store className="w-4 h-4 text-indigo-400" />
+            <span>Merchant Shop Owner</span>
+          </button>
+        </div>
+
+        {/* Quick 1-Click Demo Logins */}
+        <div className="mb-6 p-4 rounded-2xl bg-slate-900/60 border border-slate-800">
+          <div className="text-[11px] font-mono text-slate-400 uppercase tracking-wider mb-2.5 flex items-center justify-between">
+            <span>Instant Demo Access</span>
+            <span className="text-teal-400 flex items-center gap-1 font-bold">
+              <Sparkles className="w-3 h-3" /> 1-Click Sign In
+            </span>
+          </div>
+
+          {portalType === 'admin' ? (
+            <div className="grid grid-cols-2 gap-2.5">
+              <button
+                type="button"
+                onClick={() => handleAdminDemoLogin('officer')}
+                className="p-3 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-slate-700 hover:border-teal-500/40 text-left transition-all group"
+              >
+                <div className="text-xs font-bold text-slate-200 group-hover:text-teal-300">Officer Sarah</div>
+                <div className="text-[10px] text-slate-400 font-mono">Senior Credit Officer</div>
+                <div className="text-[9px] text-teal-400/80 mt-1 font-mono flex items-center gap-1">
+                  Full Underwriting Suite →
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleAdminDemoLogin('admin')}
+                className="p-3 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-slate-700 hover:border-teal-500/40 text-left transition-all group"
+              >
+                <div className="text-xs font-bold text-slate-200 group-hover:text-teal-300">System Admin</div>
+                <div className="text-[10px] text-slate-400 font-mono">Full Compliance &amp; ML</div>
+                <div className="text-[9px] text-teal-400/80 mt-1 font-mono flex items-center gap-1">
+                  Admin Master Suite →
+                </div>
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <div className="text-[10px] font-mono text-slate-400">Select a demo merchant shop:</div>
+              <div className="grid grid-cols-2 gap-2">
+                {demoShops.map((shop) => (
+                  <button
+                    key={shop.id}
+                    type="button"
+                    onClick={() => handleMerchantDemoLogin(shop.id)}
+                    className="p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-slate-700 hover:border-indigo-500/40 text-left transition-all group"
+                  >
+                    <div className="text-xs font-bold text-slate-200 truncate group-hover:text-indigo-300">
+                      {shop.name}
+                    </div>
+                    <div className="text-[10px] text-slate-400 font-mono flex items-center justify-between mt-0.5">
+                      <span>{shop.id}</span>
+                      <span className={shop.current_risk_score > 70 ? 'text-rose-400' : shop.current_risk_score > 40 ? 'text-amber-400' : 'text-emerald-400'}>
+                        {shop.current_risk_score} pts
+                      </span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Custom Credential Form */}
+        <form onSubmit={handleCustomSubmit} className="space-y-3.5">
           <div>
-            <label className="text-slate-400">Email Address</label>
-            <div className="relative mt-1">
-              <Mail className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+            <label className="block text-[11px] font-mono text-slate-400 mb-1">
+              {portalType === 'admin' ? 'Officer Email or Username' : 'Merchant Store Email'}
+            </label>
+            <div className="relative">
+              <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-3 pointer-events-none" />
               <input
-                type="email"
+                type="text"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                required
-                className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-200 focus:outline-none focus:border-teal-500/50"
+                placeholder={portalType === 'admin' ? "officer@fintrust.ai" : "owner@store.com"}
+                className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-teal-500/50 font-mono"
               />
             </div>
           </div>
 
           <div>
-            <label className="text-slate-400">Password</label>
-            <div className="relative mt-1">
-              <Lock className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+            <label className="block text-[11px] font-mono text-slate-400 mb-1">Password</label>
+            <div className="relative">
+              <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-3 pointer-events-none" />
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                required
-                className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-200 focus:outline-none focus:border-teal-500/50"
+                placeholder="••••••••"
+                className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-teal-500/50 font-mono"
               />
             </div>
           </div>
 
-          <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 text-[10px] text-slate-400 space-y-1">
-            <div className="text-slate-300 font-bold">Demo Accounts Pre-filled:</div>
-            <div>• Credit Officer: <code>officer@fintrust.ai</code> / <code>officer123</code></div>
-            <div>• Admin: <code>admin@fintrust.ai</code> / <code>admin123</code></div>
-          </div>
-
           <button
             type="submit"
-            disabled={loading}
-            className="w-full py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-black font-bold text-xs transition-all shadow-lg shadow-teal-500/20"
+            className={`w-full py-2.5 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-lg ${
+              portalType === 'admin'
+                ? 'bg-teal-500 hover:bg-teal-400 text-black shadow-glow-teal'
+                : 'bg-indigo-500 hover:bg-indigo-400 text-white shadow-glow-emerald'
+            }`}
           >
-            {loading ? 'Authenticating...' : 'Sign In'}
+            <span>Sign In to {portalType === 'admin' ? 'Admin Portal' : 'Merchant Portal'}</span>
+            <ArrowRight className="w-4 h-4" />
           </button>
         </form>
 
