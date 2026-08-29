@@ -1,0 +1,1 @@
+["sales_mean_30d", "sales_std_30d", "sales_slope_30d", "refund_rate_mean_30d", "refund_rate_slope_30d", "bank_balance_mean_30d", "bank_balance_slope_30d", "credit_utilization_mean_30d", "credit_utilization_slope_30d", "supplier_delay_mean_30d", "inventory_turnover_mean_30d", "utilization_to_balance_ratio"]
