@@ -1,10 +1,18 @@
 import os
+import json
 try:
     import joblib
 except ImportError:
     import pickle as joblib
 import numpy as np
 import pandas as pd
+
+if os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"):
+    ARTIFACTS_DIR = "/tmp/artifacts"
+else:
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    ARTIFACTS_DIR = os.path.join(BASE_DIR, "artifacts")
+os.makedirs(ARTIFACTS_DIR, exist_ok=True)
 
 class DecisionTreeRegressorNode:
     def __init__(self, depth=0, max_depth=4, min_samples_split=4):
@@ -340,10 +348,14 @@ def train_and_save_ml_models(df_merchants, df_signals):
     print("Fitting Native SHAP TreeExplainer...")
     explainer = NativeTreeExplainer(model)
 
-    model.save_model(os.path.join(ARTIFACTS_DIR, "xgboost_model.pkl"))
-    joblib.dump(iso_forest, os.path.join(ARTIFACTS_DIR, "isolation_forest.pkl"))
-    with open(os.path.join(ARTIFACTS_DIR, "feature_names.json"), "w") as f:
-        json.dump(FEATURE_COLUMNS, f)
+    try:
+        os.makedirs(ARTIFACTS_DIR, exist_ok=True)
+        model.save_model(os.path.join(ARTIFACTS_DIR, "xgboost_model.pkl"))
+        joblib.dump(iso_forest, os.path.join(ARTIFACTS_DIR, "isolation_forest.pkl"))
+        with open(os.path.join(ARTIFACTS_DIR, "feature_names.json"), "w") as f:
+            json.dump(FEATURE_COLUMNS, f)
+        print("ML models and SHAP explainer successfully trained & saved!")
+    except Exception as e:
+        print(f"Note on model serialization (running in-memory): {e}")
 
-    print("ML models and SHAP explainer successfully trained & saved!")
     return model, iso_forest, explainer, FEATURE_COLUMNS

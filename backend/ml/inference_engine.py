@@ -8,8 +8,12 @@ import pandas as pd
 
 from ml.train_model import FEATURE_COLUMNS, extract_features_from_signals, NativeTreeExplainer, IsolationForestDetector, GradientBoostedTreeRegressor
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-ARTIFACTS_DIR = os.path.join(BASE_DIR, "artifacts")
+if os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"):
+    ARTIFACTS_DIR = "/tmp/artifacts"
+else:
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    ARTIFACTS_DIR = os.path.join(BASE_DIR, "artifacts")
+os.makedirs(ARTIFACTS_DIR, exist_ok=True)
 
 class StressRadarInferenceEngine:
     def __init__(self):
