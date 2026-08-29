@@ -40,19 +40,25 @@ app.add_middleware(
 app.include_router(auth.router)
 
 # Automatic database seed on startup if database is empty (essential for Vercel cold start)
-@app.on_event("startup")
 def ensure_db_seeded():
-    db = SessionLocal()
     try:
+        Base.metadata.create_all(bind=engine)
+        db = SessionLocal()
         count = db.query(Merchant).count()
         if count == 0:
             print("Auto-seeding empty database for production deployment...")
             from seed import seed_database
             seed_database()
+        db.close()
     except Exception as e:
         print(f"Auto-seed check note: {e}")
-    finally:
-        db.close()
+
+# Run immediately for serverless / Mangum lifespan='off'
+ensure_db_seeded()
+
+@app.on_event("startup")
+def startup_event():
+    ensure_db_seeded()
 
 # --- Request/Response Models ---
 class SimulationRequest(BaseModel):
