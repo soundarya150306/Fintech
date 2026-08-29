@@ -5,7 +5,18 @@ import numpy as np
 import pandas as pd
 import xgboost as xgb
 from sklearn.ensemble import IsolationForest
-import shap
+
+class NativeTreeExplainer:
+    """Computes exact Tree SHAP attributions natively via XGBoost C++ engine."""
+    def __init__(self, model):
+        self.model = model
+
+    def shap_values(self, X):
+        dmatrix = xgb.DMatrix(X)
+        booster = self.model.get_booster() if hasattr(self.model, "get_booster") else self.model
+        contribs = booster.predict(dmatrix, pred_contribs=True)
+        # contribs shape: (N, num_features + 1), last column is base margin / bias
+        return contribs[:, :-1]
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ARTIFACTS_DIR = os.path.join(BASE_DIR, "artifacts")
@@ -140,8 +151,8 @@ def train_and_save_ml_models(df_merchants, df_signals):
     )
     iso_forest.fit(X_df)
 
-    print("Fitting SHAP TreeExplainer...")
-    explainer = shap.TreeExplainer(model)
+    print("Fitting Native SHAP TreeExplainer...")
+    explainer = NativeTreeExplainer(model)
 
     model.save_model(os.path.join(ARTIFACTS_DIR, "xgboost_model.json"))
     joblib.dump(iso_forest, os.path.join(ARTIFACTS_DIR, "isolation_forest.pkl"))

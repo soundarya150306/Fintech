@@ -4,9 +4,8 @@ import joblib
 import numpy as np
 import pandas as pd
 import xgboost as xgb
-import shap
 
-from ml.train_model import FEATURE_COLUMNS, extract_features_from_signals
+from ml.train_model import FEATURE_COLUMNS, extract_features_from_signals, NativeTreeExplainer
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ARTIFACTS_DIR = os.path.join(BASE_DIR, "artifacts")
@@ -28,8 +27,8 @@ class StressRadarInferenceEngine:
                 self.model = xgb.XGBRegressor()
                 self.model.load_model(model_path)
                 self.iso_forest = joblib.load(iso_path)
-                self.explainer = shap.TreeExplainer(self.model)
-                print("Successfully loaded pre-trained XGBoost, Isolation Forest & SHAP Explainer!")
+                self.explainer = NativeTreeExplainer(self.model)
+                print("Successfully loaded pre-trained XGBoost, Isolation Forest & Native SHAP Explainer!")
                 return
             except Exception as e:
                 print(f"Error loading saved ML models, fallback initialization: {e}")
