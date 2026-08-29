@@ -21,9 +21,10 @@ class StressRadarInferenceEngine:
         self.iso_forest = None
         self.explainer = None
         self.feature_names = FEATURE_COLUMNS
-        self.load_or_initialize()
 
     def load_or_initialize(self):
+        if self.model is not None and self.explainer is not None:
+            return
         model_path = os.path.join(ARTIFACTS_DIR, "xgboost_model.pkl")
         iso_path = os.path.join(ARTIFACTS_DIR, "isolation_forest.pkl")
 
@@ -45,10 +46,15 @@ class StressRadarInferenceEngine:
         from ml.synthetic_generator import generate_synthetic_dataset
         from ml.train_model import train_and_save_ml_models
         print("Artifacts missing, triggering on-demand synthetic ML model training...")
-        df_m, df_s = generate_synthetic_dataset(300, 90)
+        is_serverless = bool(os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"))
+        n_m = 30 if is_serverless else 100
+        n_d = 15 if is_serverless else 45
+        df_m, df_s = generate_synthetic_dataset(n_m, n_d)
         self.model, self.iso_forest, self.explainer, self.feature_names = train_and_save_ml_models(df_m, df_s)
 
     def analyze_merchant(self, df_signals, merchant_base_limit=100000, modified_vector=None):
+        if self.model is None or self.explainer is None:
+            self.load_or_initialize()
         """
         Runs complete real inference:
         - Extracts feature vector (or applies modified vector for What-If scenario)

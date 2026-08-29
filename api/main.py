@@ -58,27 +58,6 @@ async def global_exception_handler(request: Request, exc: Exception):
         }
     )
 
-# Automatic database seed on startup if database is empty (essential for Vercel cold start)
-def ensure_db_seeded():
-    try:
-        Base.metadata.create_all(bind=engine)
-        db = SessionLocal()
-        count = db.query(Merchant).count()
-        if count == 0:
-            print("Auto-seeding empty database for production deployment...")
-            from seed import seed_database
-            seed_database()
-        db.close()
-    except Exception as e:
-        print(f"Auto-seed check note: {e}")
-
-# Run immediately for serverless / Mangum lifespan='off'
-ensure_db_seeded()
-
-@app.on_event("startup")
-def startup_event():
-    ensure_db_seeded()
-
 # --- Request/Response Models ---
 class SimulationRequest(BaseModel):
     merchant_id: str

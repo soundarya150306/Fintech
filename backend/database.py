@@ -19,7 +19,28 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
 
+_db_initialized = False
+
+def ensure_db_seeded():
+    global _db_initialized
+    if _db_initialized:
+        return
+    try:
+        from models import Merchant
+        Base.metadata.create_all(bind=engine)
+        db = SessionLocal()
+        count = db.query(Merchant).count()
+        if count == 0:
+            print("Auto-seeding empty database on demand...")
+            from seed import seed_database
+            seed_database()
+        db.close()
+        _db_initialized = True
+    except Exception as e:
+        print(f"Auto-seed note: {e}")
+
 def get_db():
+    ensure_db_seeded()
     db = SessionLocal()
     try:
         yield db
