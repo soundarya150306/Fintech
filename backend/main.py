@@ -39,6 +39,25 @@ app.add_middleware(
 
 app.include_router(auth.router)
 
+import traceback
+from fastapi.responses import JSONResponse
+from fastapi import Request
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    error_msg = str(exc)
+    stack = traceback.format_exc()
+    print(f"Unhandled error on {request.url.path}: {error_msg}\n{stack}")
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": "Internal Server Error",
+            "detail": error_msg,
+            "path": str(request.url.path),
+            "traceback": stack
+        }
+    )
+
 # Automatic database seed on startup if database is empty (essential for Vercel cold start)
 def ensure_db_seeded():
     try:
@@ -83,6 +102,7 @@ def root():
     }
 
 @app.get("/api/dashboard/summary")
+@app.get("/dashboard/summary")
 def get_dashboard_summary(db: Session = Depends(get_db)):
     total_merchants = db.query(Merchant).count()
     low_risk = db.query(Merchant).filter(Merchant.risk_band == "Low Risk").count()
@@ -131,6 +151,7 @@ def get_dashboard_summary(db: Session = Depends(get_db)):
     }
 
 @app.get("/api/merchants")
+@app.get("/merchants")
 def list_merchants(
     search: Optional[str] = None,
     risk_band: Optional[str] = None,
@@ -180,6 +201,7 @@ def list_merchants(
     return {"total": total, "merchants": result}
 
 @app.get("/api/merchants/{merchant_id}")
+@app.get("/merchants/{merchant_id}")
 def get_merchant_360(merchant_id: str, db: Session = Depends(get_db)):
     merchant = db.query(Merchant).filter(Merchant.id == merchant_id).first()
     if not merchant:
@@ -234,6 +256,7 @@ def get_merchant_360(merchant_id: str, db: Session = Depends(get_db)):
     }
 
 @app.get("/api/early-warning")
+@app.get("/early-warning")
 def get_early_warning_center(days: int = 14, limit: int = 20, db: Session = Depends(get_db)):
     """
     Surfaces merchants whose risk score rose fastest in the last N days, sorted by rate of change.
@@ -287,6 +310,7 @@ def get_early_warning_center(days: int = 14, limit: int = 20, db: Session = Depe
     return {"timeframe_days": days, "fast_risers": fast_risers[:limit]}
 
 @app.post("/api/simulate")
+@app.post("/simulate")
 def run_digital_twin_simulation(req: SimulationRequest, db: Session = Depends(get_db)):
     """
     Digital Twin What-If Simulator:
@@ -365,6 +389,7 @@ def run_digital_twin_simulation(req: SimulationRequest, db: Session = Depends(ge
     }
 
 @app.post("/api/copilot")
+@app.post("/copilot")
 def query_ai_credit_copilot(req: CopilotRequest, db: Session = Depends(get_db)):
     merchant = db.query(Merchant).filter(Merchant.id == req.merchant_id).first()
     if not merchant:
@@ -416,6 +441,7 @@ def query_ai_credit_copilot(req: CopilotRequest, db: Session = Depends(get_db)):
     return copilot_out
 
 @app.post("/api/simulation/advance-day")
+@app.post("/simulation/advance-day")
 def advance_simulation_day(db: Session = Depends(get_db)):
     """
     Background job endpoint that advances the synthetic dataset by 1 day,
@@ -491,6 +517,7 @@ def advance_simulation_day(db: Session = Depends(get_db)):
     return {"status": "success", "new_date": next_date_str, "merchants_updated": updated_count}
 
 @app.get("/api/merchants/{merchant_id}/report")
+@app.get("/merchants/{merchant_id}/report")
 def download_pdf_report(merchant_id: str, db: Session = Depends(get_db)):
     merchant = db.query(Merchant).filter(Merchant.id == merchant_id).first()
     if not merchant:
@@ -524,6 +551,7 @@ def download_pdf_report(merchant_id: str, db: Session = Depends(get_db)):
     )
 
 @app.get("/api/audit-logs")
+@app.get("/audit-logs")
 def get_audit_logs(limit: int = 50, db: Session = Depends(get_db)):
     logs = db.query(AuditLog).order_by(AuditLog.id.desc()).limit(limit).all()
     result = []
