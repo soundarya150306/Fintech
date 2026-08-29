@@ -1,6 +1,8 @@
 import os
-import json
-import joblib
+try:
+    import joblib
+except ImportError:
+    import pickle as joblib
 import numpy as np
 import pandas as pd
 
