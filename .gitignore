@@ -1,0 +1,38 @@
+﻿# Python
+__pycache__/
+*.py[cod]
+*.class
+*.so
+.env
+.venv
+venv/
+*.egg-info/
+dist/
+build/
+
+# Node / Frontend
+node_modules/
+frontend/node_modules/
+frontend/dist/
+.npm
+
+# SQLite DB (will be auto-generated)
+backend/fintrust.db
+backend/ml/artifacts/*.pkl
+backend/ml/artifacts/*.json
+
+# ML artifacts (large binary files - too big for git)
+*.pkl
+*.joblib
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Vercel
+.vercel/
