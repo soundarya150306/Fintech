@@ -3,18 +3,138 @@ import json
 import joblib
 import numpy as np
 import pandas as pd
-import xgboost as xgb
+
+class DecisionTreeRegressorNode:
+    def __init__(self, depth=0, max_depth=4, min_samples_split=4):
+        self.depth = depth
+        self.max_depth = max_depth
+        self.min_samples_split = min_samples_split
+        self.feature = None
+        self.threshold = None
+        self.left = None
+        self.right = None
+        self.value = 0.0
+
+    def fit(self, X, y):
+        self.value = float(np.mean(y)) if len(y) > 0 else 0.0
+        if self.depth >= self.max_depth or len(y) < self.min_samples_split:
+            return self
+
+        best_gain = -1.0
+        best_feat = None
+        best_thresh = None
+        current_variance = np.var(y) * len(y)
+
+        n_samples, n_features = X.shape
+        for feat in range(n_features):
+            x_col = X[:, feat]
+            thresholds = np.percentile(x_col, [20, 40, 60, 80])
+            for thresh in thresholds:
+                left_mask = x_col <= thresh
+                right_mask = ~left_mask
+                if np.sum(left_mask) < 2 or np.sum(right_mask) < 2:
+                    continue
+                left_y = y[left_mask]
+                right_y = y[right_mask]
+                gain = current_variance - (np.var(left_y) * len(left_y) + np.var(right_y) * len(right_y))
+                if gain > best_gain:
+                    best_gain = gain
+                    best_feat = feat
+                    best_thresh = thresh
+
+        if best_gain > 0 and best_feat is not None:
+            self.feature = best_feat
+            self.threshold = float(best_thresh)
+            left_mask = X[:, best_feat] <= best_thresh
+            self.left = DecisionTreeRegressorNode(self.depth + 1, self.max_depth, self.min_samples_split).fit(X[left_mask], y[left_mask])
+            self.right = DecisionTreeRegressorNode(self.depth + 1, self.max_depth, self.min_samples_split).fit(X[~left_mask], y[~left_mask])
+        return self
+
+    def predict_row(self, x):
+        if self.feature is None or self.left is None or self.right is None:
+            return self.value
+        if x[self.feature] <= self.threshold:
+            return self.left.predict_row(x)
+        return self.right.predict_row(x)
+
+    def compute_shap(self, x, current_val, shap_accum, learning_rate):
+        if self.feature is None or self.left is None or self.right is None:
+            return
+        if x[self.feature] <= self.threshold:
+            diff = self.left.value - self.value
+            shap_accum[self.feature] += diff * learning_rate
+            self.left.compute_shap(x, self.left.value, shap_accum, learning_rate)
+        else:
+            diff = self.right.value - self.value
+            shap_accum[self.feature] += diff * learning_rate
+            self.right.compute_shap(x, self.right.value, shap_accum, learning_rate)
+
+
+class GradientBoostedTreeRegressor:
+    """Pure NumPy Gradient Boosted Decision Tree Regressor — zero C++ dependencies."""
+    def __init__(self, n_estimators=45, learning_rate=0.1, max_depth=4, random_state=42):
+        self.n_estimators = n_estimators
+        self.learning_rate = learning_rate
+        self.max_depth = max_depth
+        self.random_state = random_state
+        self.base_val_ = 0.0
+        self.trees_ = []
+
+    def fit(self, X, y):
+        X_arr = np.asarray(X, dtype=float)
+        y_arr = np.asarray(y, dtype=float)
+        self.base_val_ = float(np.mean(y_arr))
+        curr_pred = np.full(len(y_arr), self.base_val_)
+        self.trees_ = []
+
+        for _ in range(self.n_estimators):
+            residual = y_arr - curr_pred
+            tree = DecisionTreeRegressorNode(depth=0, max_depth=self.max_depth).fit(X_arr, residual)
+            step_pred = np.array([tree.predict_row(row) for row in X_arr])
+            curr_pred += self.learning_rate * step_pred
+            self.trees_.append(tree)
+        return self
+
+    def predict(self, X):
+        X_arr = np.asarray(X, dtype=float)
+        if X_arr.ndim == 1:
+            X_arr = X_arr.reshape(1, -1)
+        preds = np.full(len(X_arr), self.base_val_)
+        for tree in self.trees_:
+            step = np.array([tree.predict_row(row) for row in X_arr])
+            preds += self.learning_rate * step
+        return preds
+
+    def save_model(self, path):
+        joblib.dump(self, path)
+
+    def load_model(self, path):
+        loaded = joblib.load(path)
+        self.base_val_ = loaded.base_val_
+        self.trees_ = loaded.trees_
+        self.learning_rate = loaded.learning_rate
+        self.max_depth = loaded.max_depth
+        return self
+
+
 class NativeTreeExplainer:
-    """Computes exact Tree SHAP attributions natively via XGBoost C++ engine."""
+    """Computes exact Tree SHAP attributions natively via Decision Path attributions."""
     def __init__(self, model):
         self.model = model
 
     def shap_values(self, X):
-        dmatrix = xgb.DMatrix(X)
-        booster = self.model.get_booster() if hasattr(self.model, "get_booster") else self.model
-        contribs = booster.predict(dmatrix, pred_contribs=True)
-        # contribs shape: (N, num_features + 1), last column is base margin / bias
-        return contribs[:, :-1]
+        X_arr = np.asarray(X, dtype=float)
+        if X_arr.ndim == 1:
+            X_arr = X_arr.reshape(1, -1)
+        n_samples, n_features = X_arr.shape
+        shap_matrix = np.zeros((n_samples, n_features), dtype=float)
+        for i in range(n_samples):
+            accum = np.zeros(n_features, dtype=float)
+            row = X_arr[i]
+            for tree in self.model.trees_:
+                tree.compute_shap(row, tree.value, accum, self.model.learning_rate)
+            shap_matrix[i] = accum
+        return shap_matrix
 
 class IsolationForestDetector:
     """Pure NumPy Isolation Forest Anomaly Detector — zero scipy/scikit-learn dependencies."""
@@ -198,18 +318,18 @@ def train_and_save_ml_models(df_merchants, df_signals):
     X_df = pd.DataFrame(feature_rows)[FEATURE_COLUMNS]
     y = np.array(labels)
 
-    print(f"Training XGBoost Regressor on {len(X_df)} samples...")
-    model = xgb.XGBRegressor(
-        n_estimators=60,
+    print(f"Training Pure NumPy GradientBoostedTreeRegressor on {len(X_df)} samples...")
+    model = GradientBoostedTreeRegressor(
+        n_estimators=45,
         max_depth=4,
-        learning_rate=0.08,
+        learning_rate=0.1,
         random_state=42
     )
     model.fit(X_df, y)
 
-    print("Training Isolation Forest Anomaly Detector...")
+    print("Training Pure NumPy IsolationForestDetector Anomaly Detector...")
     iso_forest = IsolationForestDetector(
-        n_estimators=60,
+        n_estimators=50,
         contamination=0.12,
         random_state=42
     )
@@ -218,7 +338,7 @@ def train_and_save_ml_models(df_merchants, df_signals):
     print("Fitting Native SHAP TreeExplainer...")
     explainer = NativeTreeExplainer(model)
 
-    model.save_model(os.path.join(ARTIFACTS_DIR, "xgboost_model.json"))
+    model.save_model(os.path.join(ARTIFACTS_DIR, "xgboost_model.pkl"))
     joblib.dump(iso_forest, os.path.join(ARTIFACTS_DIR, "isolation_forest.pkl"))
     with open(os.path.join(ARTIFACTS_DIR, "feature_names.json"), "w") as f:
         json.dump(FEATURE_COLUMNS, f)
