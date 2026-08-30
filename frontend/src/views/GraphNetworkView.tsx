@@ -44,7 +44,7 @@ export const GraphNetworkView: React.FC<GraphNetworkViewProps> = ({ onSelectMerc
             3D Graph Network &amp; Contagion Explorer
           </h1>
           <p className="text-xs text-slate-400 font-mono mt-1">
-            Interactive multi-tier merchant supply chain network • Real-time financial stress propagation
+            Interactive merchant supply chain network • Real-time financial stress propagation
           </p>
         </div>
 

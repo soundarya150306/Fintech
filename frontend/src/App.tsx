@@ -9,7 +9,6 @@ import { DigitalTwinSimulator } from './views/DigitalTwinSimulator';
 import { AICreditCopilot } from './views/AICreditCopilot';
 import { AuditLogView } from './views/AuditLogView';
 import { GraphNetworkView } from './views/GraphNetworkView';
-import { TierSectorMonitoringView } from './views/TierSectorMonitoringView';
 import { AuthModal } from './components/AuthModal';
 import { advanceSimulationDay, fetchMerchants, fetchDashboardSummary } from './api/client';
 import { Merchant } from './types';
