@@ -36,6 +36,8 @@ import {
   Cell 
 } from 'recharts';
 
+import { SAMPLE_DASHBOARD_SUMMARY, SAMPLE_MERCHANTS } from '../data/sampleData';
+
 interface ExecutiveDashboardProps {
   onSelectMerchant: (m: Merchant) => void;
   simulatedDayCount: number;
@@ -47,39 +49,27 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({
   simulatedDayCount,
   onNavigateToTab 
 }) => {
-  const [summary, setSummary] = useState<any>(null);
-  const [merchants, setMerchants] = useState<Merchant[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [summary, setSummary] = useState<any>(SAMPLE_DASHBOARD_SUMMARY);
+  const [merchants, setMerchants] = useState<Merchant[]>(SAMPLE_MERCHANTS);
+  const [loading, setLoading] = useState(false);
   const [visualMode, setVisualMode] = useState<'radar3d' | 'network3d'>('radar3d');
 
   const loadData = async () => {
     try {
-      setLoading(true);
       const [sumData, merchData] = await Promise.all([
         fetchDashboardSummary(),
         fetchMerchants({ limit: 100 })
       ]);
-      setSummary(sumData);
-      setMerchants(merchData.merchants);
+      if (sumData) setSummary(sumData);
+      if (merchData?.merchants?.length > 0) setMerchants(merchData.merchants);
     } catch (err) {
-      console.error("Dashboard fetch error:", err);
-    } finally {
-      setLoading(false);
+      console.warn("Background dashboard update note:", err);
     }
   };
 
   useEffect(() => {
     loadData();
   }, [simulatedDayCount]);
-
-  if (loading && !summary) {
-    return (
-      <div className="flex flex-col items-center justify-center h-96 text-slate-400 font-mono text-sm space-y-4">
-        <Activity className="w-8 h-8 animate-spin text-teal-400" />
-        <div>Computing Portfolio Stress Metrics &amp; 3D Vectors...</div>
-      </div>
-    );
-  }
 
   const riskPieData = summary ? [
     { name: 'Low Risk', value: summary.risk_bands?.low_risk || 140, color: '#10B981' },

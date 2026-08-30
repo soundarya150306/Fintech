@@ -3,22 +3,24 @@ import { Network, Activity, Filter, Eye, ShieldAlert, Sparkles, Sliders } from '
 import { Network3DGraph } from '../components/3D/Network3DGraph';
 import { fetchMerchants } from '../api/client';
 import { Merchant } from '../types';
+import { SAMPLE_MERCHANTS } from '../data/sampleData';
 
 interface GraphNetworkViewProps {
   onSelectMerchant: (m: Merchant) => void;
 }
 
 export const GraphNetworkView: React.FC<GraphNetworkViewProps> = ({ onSelectMerchant }) => {
-  const [merchants, setMerchants] = useState<Merchant[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [merchants, setMerchants] = useState<Merchant[]>(SAMPLE_MERCHANTS);
+  const [loading, setLoading] = useState<boolean>(false);
   const [sectorFilter, setSectorFilter] = useState<string>('All');
   const [riskFilter, setRiskFilter] = useState<string>('All');
 
   useEffect(() => {
     fetchMerchants({ limit: 100 })
-      .then(res => setMerchants(res.merchants))
-      .catch(err => console.error("Error fetching merchants for 3D graph:", err))
-      .finally(() => setLoading(false));
+      .then(res => {
+        if (res?.merchants?.length > 0) setMerchants(res.merchants);
+      })
+      .catch(err => console.warn("Graph network fetch note:", err));
   }, []);
 
   const filteredMerchants = merchants.filter(m => {

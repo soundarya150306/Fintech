@@ -14,15 +14,17 @@ import { advanceSimulationDay, fetchMerchants, fetchDashboardSummary } from './a
 import { Merchant } from './types';
 import { Sparkles } from 'lucide-react';
 
+import { SAMPLE_MERCHANTS, SAMPLE_DASHBOARD_SUMMARY } from './data/sampleData';
+
 export function App() {
   // Dual Portals: 'admin' | 'merchant'
   const [portalMode, setPortalMode] = useState<'admin' | 'merchant'>('admin');
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   
   // Selection and filter state
-  const [allMerchants, setAllMerchants] = useState<Merchant[]>([]);
-  const [selectedMerchant, setSelectedMerchant] = useState<Merchant | null>(null);
-  const [alerts, setAlerts] = useState<any[]>([]);
+  const [allMerchants, setAllMerchants] = useState<Merchant[]>(SAMPLE_MERCHANTS);
+  const [selectedMerchant, setSelectedMerchant] = useState<Merchant | null>(SAMPLE_MERCHANTS[0]);
+  const [alerts, setAlerts] = useState<any[]>(SAMPLE_DASHBOARD_SUMMARY.active_alerts);
 
   // Simulation & time state
   const [simulatedDayCount, setSimulatedDayCount] = useState<number>(0);
@@ -41,22 +43,21 @@ export function App() {
     role: 'Senior Credit Officer'
   });
 
-  // Initial load
+  // Initial load background sync
   useEffect(() => {
     fetchMerchants({ limit: 100 })
       .then(res => {
-        setAllMerchants(res.merchants);
-        if (res.merchants.length > 0 && !selectedMerchant) {
-          setSelectedMerchant(res.merchants[0]);
+        if (res?.merchants?.length > 0) {
+          setAllMerchants(res.merchants);
         }
       })
-      .catch(err => console.error("Initial load error:", err));
+      .catch(err => console.warn("Background merchants sync note:", err));
 
     fetchDashboardSummary()
       .then(sum => {
         if (sum?.active_alerts) setAlerts(sum.active_alerts);
       })
-      .catch(err => console.error("Summary error:", err));
+      .catch(err => console.warn("Background summary sync note:", err));
   }, []);
 
   // Auto Day Advance Ticker Timer

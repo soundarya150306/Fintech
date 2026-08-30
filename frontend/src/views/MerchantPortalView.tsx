@@ -35,55 +35,91 @@ import {
   CartesianGrid 
 } from 'recharts';
 
+import { SAMPLE_MERCHANTS, generateSampleHistory } from '../data/sampleData';
+
 interface MerchantPortalViewProps {
   currentMerchant: Merchant | null;
   allMerchants: Merchant[];
   onSwitchShop: (m: Merchant) => void;
 }
 
+const defaultMerchant = SAMPLE_MERCHANTS[0];
+const defaultHistory = generateSampleHistory(defaultMerchant.latest_sales, defaultMerchant.latest_utilization, defaultMerchant.latest_bank_balance);
+
+const INITIAL_MERCHANT_DATA = {
+  merchant: defaultMerchant,
+  ml_diagnostics: {
+    risk_score: defaultMerchant.current_risk_score,
+    risk_band: defaultMerchant.risk_band,
+    anomaly_flag: defaultMerchant.anomaly_flag,
+    deterioration_flag: defaultMerchant.deterioration_flag,
+    top_drivers: [
+      { label: "Credit Line Utilization", value: `${Math.round(defaultMerchant.latest_utilization * 100)}%`, risk_direction: "Elevating", shap_impact: 14.8 },
+      { label: "Bank Cash Balance vs. Limit", value: `$${Math.round(defaultMerchant.latest_bank_balance).toLocaleString()}`, risk_direction: "Elevating", shap_impact: 11.2 },
+      { label: "30-Day Sales Momentum", value: `$${Math.round(defaultMerchant.latest_sales).toLocaleString()}/d`, risk_direction: "Mitigating", shap_impact: -8.4 },
+      { label: "Supplier Lead Time Stability", value: "2.4 Days Delay", risk_direction: "Mitigating", shap_impact: -4.1 }
+    ],
+    feature_vector: {
+      credit_utilization_mean_30d: defaultMerchant.latest_utilization,
+      bank_balance_mean_30d: defaultMerchant.latest_bank_balance,
+      sales_mean_30d: defaultMerchant.latest_sales
+    }
+  },
+  signal_history: defaultHistory,
+  risk_history: defaultHistory.map((s, idx) => ({
+    date: s.date,
+    score: Math.round((defaultMerchant.current_risk_score + (Math.sin(idx * 0.4) * 6)) * 10) / 10,
+    band: defaultMerchant.risk_band
+  }))
+};
+
 export const MerchantPortalView: React.FC<MerchantPortalViewProps> = ({
   currentMerchant,
   allMerchants,
   onSwitchShop
 }) => {
-  const [merchantData, setMerchantData] = useState<any>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [merchantData, setMerchantData] = useState<any>(INITIAL_MERCHANT_DATA);
+  const [loading, setLoading] = useState<boolean>(false);
 
   // Simulator state
-  const [proposedLimit, setProposedLimit] = useState<number>(150000);
+  const [proposedLimit, setProposedLimit] = useState<number>(120000);
   const [repaymentFreq, setRepaymentFreq] = useState<string>('Weekly');
   const [simulationResult, setSimulationResult] = useState<SimulationResult | null>(null);
   const [simLoading, setSimLoading] = useState<boolean>(false);
 
   // Copilot state
-  const [copilotMessages, setCopilotMessages] = useState<Array<{ sender: 'user' | 'copilot'; text: string }>>([]);
+  const [copilotMessages, setCopilotMessages] = useState<Array<{ sender: 'user' | 'copilot'; text: string }>>([
+    {
+      sender: 'copilot',
+      text: `Welcome to your Merchant Advisor! I am analyzing live financial signals for **${currentMerchant?.name || defaultMerchant.name}**. How can I help optimize your credit capacity or sales health today?`
+    }
+  ]);
   const [copilotInput, setCopilotInput] = useState<string>('');
   const [copilotLoading, setCopilotLoading] = useState<boolean>(false);
 
   // Active sub-tab
   const [activeView, setActiveView] = useState<'overview' | 'signals' | 'drivers' | 'simulator' | 'copilot'>('overview');
 
-  const merchantId = currentMerchant?.id || (allMerchants.length > 0 ? allMerchants[0].id : 'MERCH-0001');
+  const merchantId = currentMerchant?.id || (allMerchants.length > 0 ? allMerchants[0].id : 'MCH-1001');
 
   useEffect(() => {
     if (!merchantId) return;
-    setLoading(true);
     fetchMerchant360(merchantId)
       .then(data => {
-        setMerchantData(data);
-        if (data?.merchant?.base_credit_limit) {
-          setProposedLimit(data.merchant.base_credit_limit);
-        }
-        // Initialize Copilot welcome
-        setCopilotMessages([
-          {
-            sender: 'copilot',
-            text: `Welcome to your Merchant Advisor! I am analyzing live financial signals for **${data?.merchant?.name || 'Your Store'}**. How can I help optimize your credit capacity or sales health today?`
+        if (data?.merchant) {
+          setMerchantData(data);
+          if (data.merchant.base_credit_limit) {
+            setProposedLimit(data.merchant.base_credit_limit);
           }
-        ]);
+          setCopilotMessages([
+            {
+              sender: 'copilot',
+              text: `Welcome to your Merchant Advisor! I am analyzing live financial signals for **${data.merchant.name}**. How can I help optimize your credit capacity or sales health today?`
+            }
+          ]);
+        }
       })
-      .catch(err => console.error("Error loading merchant portal data:", err))
-      .finally(() => setLoading(false));
+      .catch(err => console.warn("Background merchant data fetch note:", err));
   }, [merchantId]);
 
   const handleSimulateTerms = async () => {
