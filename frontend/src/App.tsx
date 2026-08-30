@@ -23,7 +23,6 @@ export function App() {
   // Selection and filter state
   const [allMerchants, setAllMerchants] = useState<Merchant[]>([]);
   const [selectedMerchant, setSelectedMerchant] = useState<Merchant | null>(null);
-  const [selectedSectorFilter, setSelectedSectorFilter] = useState<string | null>(null);
   const [alerts, setAlerts] = useState<any[]>([]);
 
   // Simulation & time state
@@ -151,8 +150,6 @@ export function App() {
         setPortalMode={setPortalMode}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        selectedSectorFilter={selectedSectorFilter}
-        setSelectedSectorFilter={setSelectedSectorFilter}
         isCollapsed={isCollapsed}
         setIsCollapsed={setIsCollapsed}
         unreadAlertCount={alerts.length}
@@ -190,18 +187,11 @@ export function App() {
         {/* === ADMIN PORTAL VIEWS === */}
         {portalMode === 'admin' && (
           <>
-            {activeTab === 'dashboard' && (
+            {(activeTab === 'dashboard' || activeTab === 'radar3d') && (
               <ExecutiveDashboard
                 onSelectMerchant={handleSelectMerchant}
                 simulatedDayCount={simulatedDayCount}
                 onNavigateToTab={setActiveTab}
-              />
-            )}
-
-            {activeTab === 'tier_sector' && selectedSectorFilter && (
-              <TierSectorMonitoringView
-                sector={selectedSectorFilter}
-                onSelectMerchant={handleSelectMerchant}
               />
             )}
 

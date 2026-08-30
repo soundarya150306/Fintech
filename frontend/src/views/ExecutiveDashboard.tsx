@@ -400,13 +400,62 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({
         </div>
       </div>
 
-      {/* 3D Visualizer Section (Radar 3D or Network 3D) */}
-      <div className="space-y-4">
-        {visualMode === 'radar3d' ? (
-          <RadarVisualizer3D merchants={merchants} onSelectMerchant={onSelectMerchant} />
-        ) : (
-          <Network3DGraph merchants={merchants} onSelectMerchant={onSelectMerchant} />
-        )}
+      {/* 3D Visualizer Section Header & Toggle */}
+      <div className="glass-panel p-5 rounded-2xl border border-slate-800/90 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-indigo-500/10 border border-indigo-500/30 text-indigo-400">
+              <Network className="w-5 h-5 animate-pulse" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-slate-100 flex items-center gap-2">
+                <span>3D Spatial Risk Engine (Three.js WebGL)</span>
+                <span className="text-[10px] font-mono bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 px-2 py-0.5 rounded">
+                  Interactive 3D
+                </span>
+              </h3>
+              <p className="text-xs text-slate-400 font-mono">
+                Real-time 3D spatial elevation radar &amp; transaction supply chain contagion graph
+              </p>
+            </div>
+          </div>
+
+          {/* 3D View Switcher Buttons */}
+          <div className="flex items-center gap-1.5 p-1 bg-slate-900/90 border border-slate-800 rounded-xl">
+            <button
+              onClick={() => setVisualMode('radar3d')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-mono font-semibold flex items-center gap-1.5 transition-all ${
+                visualMode === 'radar3d'
+                  ? 'bg-teal-500/20 text-teal-300 border border-teal-500/40 shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Eye className="w-3.5 h-3.5" />
+              <span>3D Spatial Radar</span>
+            </button>
+
+            <button
+              onClick={() => setVisualMode('network3d')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-mono font-semibold flex items-center gap-1.5 transition-all ${
+                visualMode === 'network3d'
+                  ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Network className="w-3.5 h-3.5" />
+              <span>3D Network Graph</span>
+            </button>
+          </div>
+        </div>
+
+        {/* 3D Canvas */}
+        <div className="w-full">
+          {visualMode === 'radar3d' ? (
+            <RadarVisualizer3D merchants={merchants} onSelectMerchant={onSelectMerchant} />
+          ) : (
+            <Network3DGraph merchants={merchants} onSelectMerchant={onSelectMerchant} />
+          )}
+        </div>
       </div>
 
       {/* Live Alerts & Sector Stress Table */}

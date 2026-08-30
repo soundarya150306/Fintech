@@ -71,7 +71,15 @@ export const Navbar: React.FC<NavbarProps> = ({
             </span>
             <span className="hidden sm:inline text-slate-600">/</span>
             <span className="text-teal-400 capitalize font-medium truncate">
-              {portalMode === 'admin' ? activeTab.replace('tier_', 'Tier: ').replace('graph3d', '3D Network') : (selectedMerchant?.name || 'Shop Portal')}
+              {portalMode === 'admin' ? (
+                activeTab === 'graph3d' ? '3D Contagion Network' :
+                activeTab === 'radar3d' ? '3D Spatial Stress Radar' :
+                activeTab === 'merchant360' ? 'Merchant Portfolio 360°' :
+                activeTab === 'earlywarning' ? 'Early Warning Radar' :
+                activeTab === 'simulator' ? 'Digital Twin Simulator' :
+                activeTab === 'copilot' ? 'AI Credit Copilot' :
+                activeTab === 'audit' ? 'Audit & Compliance' : 'Executive Dashboard'
+              ) : (selectedMerchant?.name || 'Shop Portal')}
             </span>
           </div>
 

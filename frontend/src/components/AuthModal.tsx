@@ -3,12 +3,10 @@ import {
   X, 
   ShieldCheck, 
   Store, 
-  UserCheck, 
   Lock, 
   Mail, 
   ArrowRight, 
-  Sparkles, 
-  CheckCircle2 
+  Sparkles
 } from 'lucide-react';
 import { Merchant } from '../types';
 
@@ -19,6 +17,57 @@ interface AuthModalProps {
   merchants?: Merchant[];
 }
 
+const DEFAULT_DEMO_SHOPS: Merchant[] = [
+  {
+    id: "MCH-1001",
+    name: "Aura Glow Beauty",
+    sector: "Apparel & Fashion",
+    region: "North America (US-West)",
+    base_credit_limit: 120000,
+    current_risk_score: 28.4,
+    risk_band: "Low Risk",
+    anomaly_flag: false,
+    deterioration_flag: false,
+    onboarded_date: "2025-11-12"
+  },
+  {
+    id: "MCH-1002",
+    name: "Apex Gear Store",
+    sector: "Electronics & Retail",
+    region: "Europe (EU-Central)",
+    base_credit_limit: 250000,
+    current_risk_score: 84.6,
+    risk_band: "Critical",
+    anomaly_flag: true,
+    deterioration_flag: true,
+    onboarded_date: "2025-08-04"
+  },
+  {
+    id: "MCH-1003",
+    name: "Zenith Home & Kitchen",
+    sector: "Logistics & Wholesale",
+    region: "Asia Pacific (APAC-South)",
+    base_credit_limit: 180000,
+    current_risk_score: 52.1,
+    risk_band: "Watchlist",
+    anomaly_flag: false,
+    deterioration_flag: true,
+    onboarded_date: "2026-01-19"
+  },
+  {
+    id: "MCH-1004",
+    name: "Nova Health Labs",
+    sector: "Healthcare & Pharmacy",
+    region: "North America (US-East)",
+    base_credit_limit: 300000,
+    current_risk_score: 19.8,
+    risk_band: "Low Risk",
+    anomaly_flag: false,
+    deterioration_flag: false,
+    onboarded_date: "2025-05-15"
+  }
+];
+
 export const AuthModal: React.FC<AuthModalProps> = ({
   isOpen,
   onClose,
@@ -28,9 +77,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [portalType, setPortalType] = useState<'admin' | 'merchant'>('admin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [selectedDemoShop, setSelectedDemoShop] = useState<string>('MERCH-0001');
+  const [selectedDemoShop, setSelectedDemoShop] = useState<string>('MCH-1001');
 
   if (!isOpen) return null;
+
+  const demoShops = merchants.length >= 4 ? merchants.slice(0, 4) : DEFAULT_DEMO_SHOPS;
 
   const handleAdminDemoLogin = (role: 'officer' | 'admin') => {
     if (role === 'officer') {
@@ -49,26 +100,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     onClose();
   };
 
-  const handleMerchantDemoLogin = (mId: string) => {
-    const shop = merchants.find(m => m.id === mId) || {
-      id: mId,
-      name: 'Aura Glow Beauty',
-      sector: 'Apparel & Fashion',
-      region: 'North America',
-      base_credit_limit: 150000,
-      current_risk_score: 28.5,
-      risk_band: 'Low Risk',
-      anomaly_flag: false,
-      deterioration_flag: false,
-      onboarded_date: '2026-01-15'
-    };
-
+  const handleMerchantDemoLogin = (shopItem: Merchant) => {
     onLoginSuccess({
-      username: shop.name,
-      email: `owner@${shop.id.toLowerCase()}.com`,
+      username: shopItem.name,
+      email: `owner@${shopItem.id.toLowerCase()}.com`,
       role: 'Merchant Shop Owner',
-      merchantId: shop.id
-    }, 'merchant', shop);
+      merchantId: shopItem.id
+    }, 'merchant', shopItem);
     onClose();
   };
 
@@ -76,26 +114,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     e.preventDefault();
     if (portalType === 'admin') {
       onLoginSuccess({
-        username: email.split('@')[0] || 'credit_officer',
+        username: email.split('@')[0] || 'officer_sarah',
         email: email || 'officer@fintrust.ai',
-        role: 'Credit Underwriter'
+        role: 'Senior Credit Officer'
       }, 'admin');
     } else {
-      const shop = merchants.find(m => m.id === selectedDemoShop) || merchants[0] || {
-        id: 'MERCH-0001',
-        name: 'Aura Glow Beauty'
-      };
+      const shop = demoShops.find(m => m.id === selectedDemoShop) || demoShops[0];
       onLoginSuccess({
-        username: shop.name || 'Merchant Owner',
-        email: email || 'owner@merchant.com',
+        username: shop.name,
+        email: email || `owner@${shop.id.toLowerCase()}.com`,
         role: 'Merchant Shop Owner',
         merchantId: shop.id
       }, 'merchant', shop);
     }
     onClose();
   };
-
-  const demoShops = merchants.slice(0, 4);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
@@ -121,7 +154,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             Sign In to FinTrust AI
           </h2>
           <p className="text-xs text-slate-400 mt-1 font-mono">
-            Select your portal to access credit risk radar or shop analytics
+            Select your portal to access credit risk radar or merchant shop analytics
           </p>
         </div>
 
@@ -157,7 +190,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         {/* Quick 1-Click Demo Logins */}
         <div className="mb-6 p-4 rounded-2xl bg-slate-900/60 border border-slate-800">
           <div className="text-[11px] font-mono text-slate-400 uppercase tracking-wider mb-2.5 flex items-center justify-between">
-            <span>Instant Demo Access</span>
+            <span>Instant Demo Access (Sample Database)</span>
             <span className="text-teal-400 flex items-center gap-1 font-bold">
               <Sparkles className="w-3 h-3" /> 1-Click Sign In
             </span>
@@ -168,19 +201,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               <button
                 type="button"
                 onClick={() => handleAdminDemoLogin('officer')}
-                className="p-3 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-slate-700 hover:border-teal-500/40 text-left transition-all group"
+                className="p-3 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-slate-700 hover:border-teal-500/40 text-left transition-all group shadow-sm"
               >
                 <div className="text-xs font-bold text-slate-200 group-hover:text-teal-300">Officer Sarah</div>
                 <div className="text-[10px] text-slate-400 font-mono">Senior Credit Officer</div>
                 <div className="text-[9px] text-teal-400/80 mt-1 font-mono flex items-center gap-1">
-                  Full Underwriting Suite →
+                  Full 200 Merchant Suite →
                 </div>
               </button>
 
               <button
                 type="button"
                 onClick={() => handleAdminDemoLogin('admin')}
-                className="p-3 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-slate-700 hover:border-teal-500/40 text-left transition-all group"
+                className="p-3 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-slate-700 hover:border-teal-500/40 text-left transition-all group shadow-sm"
               >
                 <div className="text-xs font-bold text-slate-200 group-hover:text-teal-300">System Admin</div>
                 <div className="text-[10px] text-slate-400 font-mono">Full Compliance &amp; ML</div>
@@ -191,20 +224,20 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </div>
           ) : (
             <div className="space-y-2">
-              <div className="text-[10px] font-mono text-slate-400">Select a demo merchant shop:</div>
+              <div className="text-[10px] font-mono text-slate-400">Select a demo merchant store:</div>
               <div className="grid grid-cols-2 gap-2">
                 {demoShops.map((shop) => (
                   <button
                     key={shop.id}
                     type="button"
-                    onClick={() => handleMerchantDemoLogin(shop.id)}
-                    className="p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-slate-700 hover:border-indigo-500/40 text-left transition-all group"
+                    onClick={() => handleMerchantDemoLogin(shop)}
+                    className="p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-slate-700 hover:border-indigo-500/40 text-left transition-all group shadow-sm"
                   >
                     <div className="text-xs font-bold text-slate-200 truncate group-hover:text-indigo-300">
                       {shop.name}
                     </div>
                     <div className="text-[10px] text-slate-400 font-mono flex items-center justify-between mt-0.5">
-                      <span>{shop.id}</span>
+                      <span>{shop.sector.split('&')[0]}</span>
                       <span className={shop.current_risk_score > 70 ? 'text-rose-400' : shop.current_risk_score > 40 ? 'text-amber-400' : 'text-emerald-400'}>
                         {shop.current_risk_score} pts
                       </span>
@@ -256,7 +289,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 : 'bg-indigo-500 hover:bg-indigo-400 text-white shadow-glow-emerald'
             }`}
           >
-            <span>Sign In to {portalType === 'admin' ? 'Admin Portal' : 'Merchant Portal'}</span>
+            <span>Enter {portalType === 'admin' ? 'Admin Portal' : 'Merchant Portal'}</span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </form>
