@@ -8,12 +8,14 @@ import pandas as pd
 
 from ml.train_model import FEATURE_COLUMNS, extract_features_from_signals, NativeTreeExplainer, IsolationForestDetector, GradientBoostedTreeRegressor
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BUNDLED_ARTIFACTS_DIR = os.path.join(BASE_DIR, "artifacts")
+
 if os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"):
     ARTIFACTS_DIR = "/tmp/artifacts"
+    os.makedirs(ARTIFACTS_DIR, exist_ok=True)
 else:
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    ARTIFACTS_DIR = os.path.join(BASE_DIR, "artifacts")
-os.makedirs(ARTIFACTS_DIR, exist_ok=True)
+    ARTIFACTS_DIR = BUNDLED_ARTIFACTS_DIR
 
 class StressRadarInferenceEngine:
     def __init__(self):
@@ -25,19 +27,22 @@ class StressRadarInferenceEngine:
     def load_or_initialize(self):
         if self.model is not None and self.explainer is not None:
             return
-        model_path = os.path.join(ARTIFACTS_DIR, "xgboost_model.pkl")
-        iso_path = os.path.join(ARTIFACTS_DIR, "isolation_forest.pkl")
+        
+        # Check bundled artifacts first (zero latency)
+        for check_dir in [BUNDLED_ARTIFACTS_DIR, ARTIFACTS_DIR]:
+            model_path = os.path.join(check_dir, "xgboost_model.pkl")
+            iso_path = os.path.join(check_dir, "isolation_forest.pkl")
 
-        if os.path.exists(model_path) and os.path.exists(iso_path):
-            try:
-                self.model = GradientBoostedTreeRegressor()
-                self.model.load_model(model_path)
-                self.iso_forest = joblib.load(iso_path)
-                self.explainer = NativeTreeExplainer(self.model)
-                print("Successfully loaded pre-trained GradientBoostedTree, Isolation Forest & Native SHAP Explainer!")
-                return
-            except Exception as e:
-                print(f"Error loading saved ML models, fallback initialization: {e}")
+            if os.path.exists(model_path) and os.path.exists(iso_path):
+                try:
+                    self.model = GradientBoostedTreeRegressor()
+                    self.model.load_model(model_path)
+                    self.iso_forest = joblib.load(iso_path)
+                    self.explainer = NativeTreeExplainer(self.model)
+                    print(f"Successfully loaded pre-trained GradientBoostedTree, Isolation Forest & Native SHAP Explainer from {check_dir}!")
+                    return
+                except Exception as e:
+                    print(f"Error loading saved ML models from {check_dir}: {e}")
 
         # Fallback initialization (fit quick baseline if artifacts missing)
         self.initialize_fallback()
@@ -45,11 +50,8 @@ class StressRadarInferenceEngine:
     def initialize_fallback(self):
         from ml.synthetic_generator import generate_synthetic_dataset
         from ml.train_model import train_and_save_ml_models
-        print("Artifacts missing, triggering on-demand synthetic ML model training...")
-        is_serverless = bool(os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"))
-        n_m = 30 if is_serverless else 100
-        n_d = 15 if is_serverless else 45
-        df_m, df_s = generate_synthetic_dataset(n_m, n_d)
+        print("Artifacts missing, triggering fast on-demand synthetic ML model training...")
+        df_m, df_s = generate_synthetic_dataset(20, 10)
         self.model, self.iso_forest, self.explainer, self.feature_names = train_and_save_ml_models(df_m, df_s)
 
     def analyze_merchant(self, df_signals, merchant_base_limit=100000, modified_vector=None):
